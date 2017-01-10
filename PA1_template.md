@@ -1,0 +1,141 @@
+# Reproducible Research Course Project
+This is R markdown document created for Peer Assignment project  related Reproducible Research Course
+
+## Loading and processing the data
+
+```r
+library(dplyr)
+```
+
+```
+## 
+## Attaching package: 'dplyr'
+```
+
+```
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+```
+
+```
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+```
+
+```r
+library(lattice)
+activity <- read.csv("activity.csv")
+
+##creating new data set by removing NA records
+activity_n <- filter(activity, !is.na(activity$steps)==TRUE) # removing step with NA records
+
+##Converting the columns appropriately 
+activity_n$date <- as.Date(as.character(activity_n$date))
+activity_n$steps <- as.numeric(as.character(activity_n$steps))
+```
+
+##Calculating the Total Number of Steps taken per day?
+
+
+```r
+tot_steps <- aggregate(activity_n$steps, by=list(activity_n$date), FUN=sum)
+
+##Giving proper names to data frame columns
+names(tot_steps) <- c("Date", "Steps")
+
+##Plotting a histogram
+hist(tot_steps$Steps, col = "purple", breaks = 100,main = "Total Steps In a Day", xlab = "Steps")
+rug(tot_steps$Steps)
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
+
+##Calculating the Mean and Median of Steps taken per day
+
+```r
+##Calculating mean and median values and storing in new data frame
+mn_mdn <- activity_n %>% group_by(date) %>% summarize(Mean = mean(steps), Median = median(steps))
+```
+
+
+##Plotting Time series plot  for Average 
+
+```r
+library(ggplot2)
+##Creating new data frame 
+interval <- aggregate(activity_n$steps, by= list(activity_n$interval), FUN=sum)
+names(interval) <- c("Interval","Steps")
+ggplot(interval, aes(Interval, Steps)) +geom_line(color ="blue") + xlab("5-minute Interval") + ylab("Average Number of Steps Taken")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+##Calculating maximum of number of steps taken on 5-min interval
+
+```r
+interval[which.max(interval$Steps),]
+```
+
+```
+##     Interval Steps
+## 104      835 10927
+```
+##library(gridExtra) --> Research
+
+###grid.arrange(g1, g2,  ncol=1, nrow =2)
+
+##Missing Values
+
+```r
+##Missing steps
+miss <- is.na(activity$steps)
+table(miss)
+```
+
+```
+## miss
+## FALSE  TRUE 
+## 15264  2304
+```
+
+```r
+##Filling missing value with mean step value for 5-min interval
+activity_miss <- activity
+activity_miss$steps[which(is.na(activity_miss$steps))] <- tapply(activity$steps, activity$interval, mean, na.rm = T, simplify = F)
+activity_miss$steps <- as.vector(activity_miss$steps, mode = "numeric")
+
+##Calculating total number of steps per day with new data set
+tot_act_steps <- activity_miss %>% group_by(date) %>% summarize(total_steps= sum(steps))
+
+##Histogram of the total number of steps taken each day
+hist(tot_act_steps$total_steps, breaks = 10, col="pink", xlab = "Total Number of Steps", ylab = "Date", main = "Number of Steps taken Each Day")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
+```r
+##Calculating mean and median from the new data frame
+act_mn_mdn <- activity_miss %>% group_by(date) %>% summarize(Mean = mean(steps), Median = median(steps))
+```
+
+##Difference Activity Pattern between Weekdays and Weekends
+
+
+```r
+## Converting the date column appropriately
+activity_miss$date <- as.Date(as.character(activity_miss$date))
+
+#Adding new column to identify Weekday and Weekend 
+activity_miss$Day <- ifelse(weekdays(activity_miss$date) %in% c("Saturday","Sunday"),"Weekend","Weekday")
+
+##Aggregating the data
+agg_data <- aggregate(steps ~ interval + Day, activity_miss, mean)
+
+##Plotting the activity pattern
+
+ggplot(agg_data, aes(interval, steps)) + geom_line(color ="magenta") + facet_grid(Day ~.) + xlab("5-min interval") + ylab("Number of Steps")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+
